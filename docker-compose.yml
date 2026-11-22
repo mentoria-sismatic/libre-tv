@@ -1,0 +1,11 @@
+services:
+  libretv-proxy:
+    image: node:20-alpine
+    container_name: libretv-proxy
+    working_dir: /app
+    volumes:
+      - ./proxy:/app:ro
+    command: node server.js
+    ports:
+      - "8787:8787"
+    restart: unless-stopped

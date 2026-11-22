@@ -1,0 +1,9 @@
+{
+  "name": "LibreTV — Player M3U",
+  "short_name": "LibreTV",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#090b10",
+  "theme_color": "#090b10",
+  "description": "Player M3U/Xtream open-source com multi-tela e modo Kids."
+}

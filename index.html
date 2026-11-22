@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LibreTV — Player M3U Open Source (AGPLv3)</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
+  <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', system-ui, sans-serif; background-color: #090b10; color: #f1f5f9; }
+    .channel-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .channel-scroll::-webkit-scrollbar-track { background: transparent; }
+    .channel-scroll::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 9999px; }
+    .channel-scroll::-webkit-scrollbar-thumb:hover { background: #334155; }
+    .active-pane { box-shadow: 0 0 0 2px #38bdf8; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-[#090b10] text-slate-100 selection:bg-sky-500/30">
+
+  <!-- Top Navbar -->
+  <header class="border-b border-slate-800/80 bg-[#0d111a]/90 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-3 sm:px-5 h-14 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-lg shadow-sky-500/20">
+          <i data-lucide="tv" class="w-4 h-4 text-white"></i>
+        </div>
+        <div class="truncate">
+          <div class="flex items-center gap-2">
+            <span class="font-bold tracking-tight text-sm sm:text-base">LibreTV</span>
+            <span class="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">AGPLv3</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <button id="btn-multiview" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700/70 transition" title="Alternar Multi-tela (2 canais)">
+          <i data-lucide="columns-2" class="w-3.5 h-3.5 text-sky-400"></i>
+          <span class="hidden sm:inline">Multi-tela</span>
+        </button>
+
+        <button id="btn-add-list" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-sky-600 hover:bg-sky-500 text-white transition shadow-sm">
+          <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+          <span>Adicionar Lista</span>
+        </button>
+
+        <button id="btn-profile" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700/70 transition">
+          <i data-lucide="user" class="w-3.5 h-3.5 text-indigo-400"></i>
+          <span id="profile-label" class="max-w-[70px] truncate">Principal</span>
+        </button>
+
+        <button id="btn-donate" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 transition">
+          <i data-lucide="heart" class="w-3.5 h-3.5"></i>
+          <span class="hidden md:inline">Apoiar</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-5 py-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+    <!-- Left/Top: Video Player Area -->
+    <section class="lg:col-span-8 flex flex-col gap-3">
+      <div id="player-grid" class="grid grid-cols-1 gap-3">
+        <!-- Pane 1 -->
+        <div id="pane-0" class="relative bg-black rounded-xl overflow-hidden border border-slate-800 aspect-video active-pane cursor-pointer group">
+          <video id="video-0" class="w-full h-full object-contain bg-black" controls playsinline></video>
+          <div id="overlay-0" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/90 p-6 text-center">
+            <div class="w-12 h-12 rounded-full bg-slate-800/80 flex items-center justify-center mb-3">
+              <i data-lucide="play-circle" class="w-6 h-6 text-sky-400"></i>
+            </div>
+            <h2 class="text-sm sm:text-base font-semibold text-white mb-1">Player vazio por padrão</h2>
+            <p class="text-xs text-slate-400 max-w-md mb-4">
+              O LibreTV não hospeda nem distribui canais. Adicione sua lista M3U/Xtream ou carregue streams públicos de teste para validar o player.
+            </p>
+            <div class="flex flex-wrap items-center justify-center gap-2">
+              <button id="btn-load-demo" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-sky-600 hover:bg-sky-500 text-white transition">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                Carregar Lista de Teste Pública
+              </button>
+              <button id="btn-open-add-from-empty" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                <i data-lucide="link" class="w-3.5 h-3.5"></i>
+                Colar M3U / Xtream
+              </button>
+            </div>
+          </div>
+          <div id="badge-0" class="hidden absolute top-2.5 left-2.5 px-2 py-1 rounded-md bg-black/70 backdrop-blur text-[11px] font-medium text-white flex items-center gap-1.5 pointer-events-none">
+            <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+            <span id="title-0">Tela 1</span>
+          </div>
+        </div>
+
+        <!-- Pane 2 (Multi-view) -->
+        <div id="pane-1" class="hidden relative bg-black rounded-xl overflow-hidden border border-slate-800 aspect-video cursor-pointer group">
+          <video id="video-1" class="w-full h-full object-contain bg-black" controls muted playsinline></video>
+          <div id="overlay-1" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/85 p-4 text-center">
+            <p class="text-xs font-medium text-slate-300 mb-1">Tela 2 (Multi-tela)</p>
+            <p class="text-[11px] text-slate-400">Clique aqui para focar e escolha outro canal na lista.</p>
+          </div>
+          <div id="badge-1" class="hidden absolute top-2.5 left-2.5 px-2 py-1 rounded-md bg-black/70 backdrop-blur text-[11px] font-medium text-white flex items-center gap-1.5 pointer-events-none">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span id="title-1">Tela 2</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Now Playing / Controls Bar -->
+      <div class="bg-[#0d111a] border border-slate-800/80 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-9 h-9 rounded-lg bg-slate-800 flex items-center justify-center shrink-0">
+            <i data-lucide="radio" class="w-4 h-4 text-sky-400"></i>
+          </div>
+          <div class="min-w-0">
+            <div id="now-playing-name" class="text-sm font-semibold text-white truncate">Nenhum canal selecionado</div>
+            <div id="now-playing-meta" class="text-xs text-slate-400 truncate">Foco atual: Tela 1 · Dados salvos apenas no seu navegador</div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button id="btn-swap-audio" class="hidden inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+            <i data-lucide="volume-2" class="w-3.5 h-3.5 text-sky-400"></i>
+            Alternar Áudio
+          </button>
+          <button id="btn-clear-data" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800/70 hover:bg-rose-950/60 hover:text-rose-300 text-slate-400 border border-slate-800 transition" title="Limpar listas locais">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            <span class="hidden sm:inline">Limpar</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right/Bottom: Channel List & Search -->
+    <aside class="lg:col-span-4 bg-[#0d111a] border border-slate-800/80 rounded-xl flex flex-col h-[480px] lg:h-[calc(100vh-7.5rem)]">
+      <div class="p-3 border-b border-slate-800/80 space-y-2.5">
+        <div class="relative">
+          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+          <input id="search-input" type="text" placeholder="Buscar canal ou categoria..." class="w-full bg-slate-900/90 border border-slate-800 rounded-lg pl-9 pr-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500" />
+        </div>
+        <div id="category-tabs" class="flex items-center gap-1.5 overflow-x-auto channel-scroll pb-1">
+          <!-- Categories rendered dynamically -->
+        </div>
+      </div>
+
+      <div id="channel-list" class="flex-1 overflow-y-auto channel-scroll p-2 space-y-1">
+        <!-- Channels rendered dynamically -->
+      </div>
+
+      <div class="p-2.5 border-t border-slate-800/80 text-[11px] text-slate-500 flex items-center justify-between">
+        <span id="channel-count">0 canais</span>
+        <span>Licença AGPLv3 · Zero rastreio</span>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Modal: Adicionar Lista M3U / Xtream -->
+  <div id="modal-add" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-[#0d111a] border border-slate-800 rounded-2xl max-w-lg w-full p-5 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-semibold text-white">Adicionar Lista (M3U ou Xtream)</h3>
+        <button data-close-modal="modal-add" class="p-1 text-slate-400 hover:text-white rounded-lg">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="flex gap-2 mb-4 border-b border-slate-800 pb-2">
+        <button id="tab-m3u" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-sky-600 text-white">Link / Arquivo M3U</button>
+        <button id="tab-xtream" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:text-white">Xtream (Usuário/Senha)</button>
+      </div>
+
+      <form id="form-m3u" class="space-y-3">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">URL da lista M3U (.m3u ou .m3u8)</label>
+          <input id="input-m3u-url" type="url" placeholder="https://exemplo.com/lista.m3u" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-500" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Ou importe um arquivo .m3u do aparelho</label>
+          <input id="input-m3u-file" type="file" accept=".m3u,.m3u8,.txt" class="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700" />
+        </div>
+        <button type="submit" class="w-full py-2 rounded-lg text-xs font-semibold bg-sky-600 hover:bg-sky-500 text-white transition">Carregar Lista M3U</button>
+      </form>
+
+      <form id="form-xtream" class="hidden space-y-3">
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Servidor (com https://)</label>
+          <input id="input-xtream-host" type="url" placeholder="https://meu-provedor.com:8080" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-500" required />
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Usuário</label>
+            <input id="input-xtream-user" type="text" placeholder="usuario" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-500" required />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Senha</label>
+            <input id="input-xtream-pass" type="password" placeholder="••••••" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-500" required />
+          </div>
+        </div>
+        <button type="submit" class="w-full py-2 rounded-lg text-xs font-semibold bg-sky-600 hover:bg-sky-500 text-white transition">Conectar via Xtream</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Perfis & Kids -->
+  <div id="modal-profile" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-[#0d111a] border border-slate-800 rounded-2xl max-w-sm w-full p-5 shadow-2xl">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-base font-semibold text-white">Perfis & Controle Parental</h3>
+        <button data-close-modal="modal-profile" class="p-1 text-slate-400 hover:text-white rounded-lg">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div class="space-y-2 mb-4">
+        <button id="select-profile-main" class="w-full flex items-center justify-between p-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 transition">
+          <div class="flex items-center gap-2.5">
+            <span class="w-8 h-8 rounded-full bg-sky-600/20 text-sky-400 flex items-center justify-center text-xs font-bold">P</span>
+            <div class="text-left">
+              <div class="text-xs font-semibold text-white">Principal</div>
+              <div class="text-[11px] text-slate-400">Acesso completo às listas</div>
+            </div>
+          </div>
+          <span id="badge-main" class="text-[10px] font-semibold text-sky-400">Ativo</span>
+        </button>
+
+        <button id="select-profile-kids" class="w-full flex items-center justify-between p-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 transition">
+          <div class="flex items-center gap-2.5">
+            <span class="w-8 h-8 rounded-full bg-emerald-600/20 text-emerald-400 flex items-center justify-center text-xs font-bold">K</span>
+            <div class="text-left">
+              <div class="text-xs font-semibold text-white">Modo Kids</div>
+              <div class="text-[11px] text-slate-400">Filtra conteúdo adulto · PIN para sair</div>
+            </div>
+          </div>
+          <span id="badge-kids" class="hidden text-[10px] font-semibold text-emerald-400">Ativo</span>
+        </button>
+      </div>
+
+      <div id="pin-box" class="hidden space-y-2 pt-2 border-t border-slate-800">
+        <label class="block text-xs text-slate-300">Digite o PIN para sair do Modo Kids (padrão: 1234)</label>
+        <div class="flex gap-2">
+          <input id="input-pin" type="password" maxlength="4" placeholder="1234" class="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-sky-500" />
+          <button id="btn-verify-pin" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-600 hover:bg-sky-500 text-white">Desbloquear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Apoie o Projeto (Doações & AGPLv3) -->
+  <div id="modal-donate" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-[#0d111a] border border-slate-800 rounded-2xl max-w-md w-full p-5 shadow-2xl">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-base font-semibold text-white flex items-center gap-2">
+          <i data-lucide="heart" class="w-4 h-4 text-amber-400"></i>
+          Apoie o LibreTV (Open Source)
+        </h3>
+        <button data-close-modal="modal-donate" class="p-1 text-slate-400 hover:text-white rounded-lg">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <p class="text-xs text-slate-300 leading-relaxed mb-4">
+        O LibreTV é um projeto gratuito, sem anúncios e licenciado sob <strong>AGPLv3</strong>. Se o player te ajuda no dia a dia, você pode apoiar a manutenção do código aberto:
+      </p>
+      <div class="space-y-2.5 mb-4">
+        <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-2">
+          <div>
+            <div class="text-xs font-semibold text-white">Chave Pix</div>
+            <div id="pix-key-text" class="text-[11px] text-slate-400 font-mono">sua-chave-pix@exemplo.com.br</div>
+          </div>
+          <button id="btn-copy-pix" class="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-sky-400 transition">Copiar</button>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-2">
+          <div>
+            <div class="text-xs font-semibold text-white">GitHub Sponsors / Ko-fi</div>
+            <div class="text-[11px] text-slate-400">github.com/sponsors/seu-usuario</div>
+          </div>
+          <span class="px-2 py-1 rounded bg-emerald-500/15 text-emerald-300 text-[10px] font-semibold">Open Source</span>
+        </div>
+      </div>
+      <p class="text-[11px] text-slate-500">
+        Empresas interessadas em uso comercial fechado ou White-Label podem adquirir licença comercial separada (Dual-License).
+      </p>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="hidden fixed bottom-4 right-4 z-50 bg-slate-900 border border-slate-700 text-slate-100 text-xs px-3.5 py-2.5 rounded-xl shadow-xl flex items-center gap-2">
+    <i data-lucide="info" class="w-4 h-4 text-sky-400 shrink-0"></i>
+    <span id="toast-msg"></span>
+  </div>
+
+  <script>
+    (function () {
+      const DEMO_M3U = `#EXTM3U
+#EXTINF:-1 tvg-id="mux-1" tvg-name="Mux Test Stream" group-title="Testes Públicos",Mux Test Stream (HLS)
+https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
+#EXTINF:-1 tvg-id="bbb-1" tvg-name="Big Buck Bunny" group-title="Animação Livre",Big Buck Bunny (Blender)
+https://test-streams.mux.dev/pts_shift/master.m3u8
+#EXTINF:-1 tvg-id="apple-1" tvg-name="Apple BipBop" group-title="Testes Públicos",Apple Advanced Stream
+https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8
+#EXTINF:-1 tvg-id="sintel-1" tvg-name="Sintel Trailer" group-title="Cinema Livre",Sintel (Open Movie)
+https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8`;
+
+      const state = {
+        channels: [],
+        favorites: new Set(),
+        selectedCategory: 'Todos',
+        search: '',
+        multiView: false,
+        activePane: 0,
+        profile: 'main', // 'main' | 'kids'
+        pin: '1234',
+        hlsInstances: [null, null],
+        playing: [null, null]
+      };
+
+      // Storage helpers
+      function loadStorage() {
+        try {
+          const favs = JSON.parse(localStorage.getItem('libretv_favs') || '[]');
+          state.favorites = new Set(favs);
+          const saved = JSON.parse(localStorage.getItem('libretv_channels') || '[]');
+          if (Array.isArray(saved) && saved.length) state.channels = saved;
+          const prof = localStorage.getItem('libretv_profile');
+          if (prof === 'kids' || prof === 'main') state.profile = prof;
+        } catch (e) {}
+      }
+
+      function saveStorage() {
+        try {
+          localStorage.setItem('libretv_favs', JSON.stringify([...state.favorites]));
+          localStorage.setItem('libretv_channels', JSON.stringify(state.channels));
+          localStorage.setItem('libretv_profile', state.profile);
+        } catch (e) {}
+      }
+
+      // Toast helper
+      let toastTimer = null;
+      function showToast(msg) {
+        const el = document.getElementById('toast');
+        document.getElementById('toast-msg').textContent = msg;
+        el.classList.remove('hidden');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => el.classList.add('hidden'), 3200);
+      }
+
+      // M3U Parser
+      function parseM3U(text) {
+        const lines = text.split(/\r?\n/);
+        const items = [];
+        let current = null;
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          if (line.startsWith('#EXTINF:')) {
+            const groupMatch = line.match(/group-title="([^"]*)"/i);
+            const logoMatch = line.match(/tvg-logo="([^"]*)"/i);
+            const commaIdx = line.lastIndexOf(',');
+            const name = commaIdx !== -1 ? line.slice(commaIdx + 1).trim() : 'Canal sem nome';
+            current = {
+              id: 'ch_' + items.length + '_' + Math.random().toString(36).slice(2, 6),
+              name: name || 'Canal ' + (items.length + 1),
+              group: (groupMatch && groupMatch[1]) ? groupMatch[1] : 'Geral',
+              logo: logoMatch ? logoMatch[1] : ''
+            };
+          } else if (!line.startsWith('#')) {
+            if (!current) {
+              current = {
+                id: 'ch_' + items.length + '_' + Math.random().toString(36).slice(2, 6),
+                name: 'Stream ' + (items.length + 1),
+                group: 'Geral',
+                logo: ''
+              };
+            }
+            current.url = line;
+            items.push(current);
+            current = null;
+          }
+        }
+        return items;
+      }
+
+      // Playback engine
+      function playChannel(ch, paneIndex = state.activePane) {
+        const video = document.getElementById('video-' + paneIndex);
+        const overlay = document.getElementById('overlay-' + paneIndex);
+        const badge = document.getElementById('badge-' + paneIndex);
+        const titleEl = document.getElementById('title-' + paneIndex);
+
+        if (state.hlsInstances[paneIndex]) {
+          state.hlsInstances[paneIndex].destroy();
+          state.hlsInstances[paneIndex] = null;
+        }
+
+        overlay.classList.add('hidden');
+        badge.classList.remove('hidden');
+        titleEl.textContent = ch.name;
+        state.playing[paneIndex] = ch;
+
+        if (window.Hls && Hls.isSupported() && ch.url.includes('.m3u8')) {
+          const hls = new Hls({ enableWorker: true });
+          hls.loadSource(ch.url);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            video.play().catch(() => {});
+          });
+          hls.on(Hls.Events.ERROR, (_, data) => {
+            if (data.fatal) showToast('Erro ao abrir stream (verifique CORS ou proxy).');
+          });
+          state.hlsInstances[paneIndex] = hls;
+        } else {
+          video.src = ch.url;
+          video.play().catch(() => {});
+        }
+
+        updateNowPlayingBar();
+      }
+
+      function setActivePane(idx) {
+        state.activePane = idx;
+        [0, 1].forEach(i => {
+          const pane = document.getElementById('pane-' + i);
+          const video = document.getElementById('video-' + i);
+          if (i === idx) {
+            pane.classList.add('active-pane');
+            video.muted = false;
+          } else {
+            pane.classList.remove('active-pane');
+            video.muted = true;
+          }
+        });
+        updateNowPlayingBar();
+      }
+
+      function updateNowPlayingBar() {
+        const ch = state.playing[state.activePane];
+        const nameEl = document.getElementById('now-playing-name');
+        const metaEl = document.getElementById('now-playing-meta');
+        if (ch) {
+          nameEl.textContent = ch.name;
+          metaEl.textContent = `${ch.group} · Foco: Tela ${state.activePane + 1}`;
+        } else {
+          nameEl.textContent = 'Nenhum canal selecionado';
+          metaEl.textContent = `Foco atual: Tela ${state.activePane + 1} · Dados salvos apenas no seu navegador`;
+        }
+      }
+
+      function getFilteredChannels() {
+        const q = state.search.toLowerCase();
+        return state.channels.filter(ch => {
+          if (state.profile === 'kids') {
+            const txt = (ch.name + ' ' + ch.group).toLowerCase();
+            if (txt.includes('adult') || txt.includes('+18') || txt.includes('xxx')) return false;
+          }
+          if (state.selectedCategory === 'Favoritos' && !state.favorites.has(ch.url)) return false;
+          if (state.selectedCategory !== 'Todos' && state.selectedCategory !== 'Favoritos' && ch.group !== state.selectedCategory) return false;
+          if (q && !ch.name.toLowerCase().includes(q) && !ch.group.toLowerCase().includes(q)) return false;
+          return true;
+        });
+      }
+
+      function renderCategories() {
+        const cats = ['Todos', 'Favoritos', ...new Set(state.channels.map(c => c.group))];
+        const container = document.getElementById('category-tabs');
+        container.innerHTML = '';
+        cats.forEach(cat => {
+          const btn = document.createElement('button');
+          const active = state.selectedCategory === cat;
+          btn.className = `px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap transition ${active ? 'bg-sky-600 text-white' : 'bg-slate-800/80 text-slate-400 hover:text-white'}`;
+          btn.textContent = cat;
+          btn.addEventListener('click', () => {
+            state.selectedCategory = cat;
+            renderCategories();
+            renderChannels();
+          });
+          container.appendChild(btn);
+        });
+      }
+
+      function renderChannels() {
+        const list = getFilteredChannels();
+        const container = document.getElementById('channel-list');
+        document.getElementById('channel-count').textContent = `${list.length} ${list.length === 1 ? 'canal' : 'canais'}`;
+        container.innerHTML = '';
+
+        if (!list.length) {
+          container.innerHTML = `<div class="text-center py-10 px-4 text-xs text-slate-500">Nenhum canal encontrado. Adicione uma lista M3U ou carregue a lista de teste.</div>`;
+          return;
+        }
+
+        list.forEach(ch => {
+          const row = document.createElement('div');
+          const isFav = state.favorites.has(ch.url);
+          row.className = 'flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-slate-800/70 cursor-pointer transition group';
+
+          row.innerHTML = `
+            <div class="flex items-center gap-2.5 min-w-0 flex-1">
+              <div class="w-8 h-8 rounded-md bg-slate-800 flex items-center justify-center shrink-0 text-xs font-bold text-sky-400">
+                ${ch.name.slice(0, 2).toUpperCase()}
+              </div>
+              <div class="min-w-0">
+                <div class="text-xs font-medium text-slate-100 truncate">${escapeHtml(ch.name)}</div>
+                <div class="text-[11px] text-slate-500 truncate">${escapeHtml(ch.group)}</div>
+              </div>
+            </div>
+            <button class="fav-btn p-1.5 rounded-md hover:bg-slate-700 ${isFav ? 'text-amber-400' : 'text-slate-600 group-hover:text-slate-400'}" title="Favoritar">
+              <i data-lucide="star" class="w-3.5 h-3.5 ${isFav ? 'fill-amber-400' : ''}"></i>
+            </button>
+          `;
+
+          row.addEventListener('click', (e) => {
+            if (e.target.closest('.fav-btn')) {
+              if (state.favorites.has(ch.url)) state.favorites.delete(ch.url);
+              else state.favorites.add(ch.url);
+              saveStorage();
+              renderChannels();
+              return;
+            }
+            playChannel(ch, state.activePane);
+          });
+
+          container.appendChild(row);
+        });
+        lucide.createIcons();
+      }
+
+      function escapeHtml(str) {
+        return String(str).replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]));
+      }
+
+      function updateProfileUI() {
+        document.getElementById('profile-label').textContent = state.profile === 'kids' ? 'Kids' : 'Principal';
+        document.getElementById('badge-main').classList.toggle('hidden', state.profile !== 'main');
+        document.getElementById('badge-kids').classList.toggle('hidden', state.profile !== 'kids');
+        document.getElementById('pin-box').classList.toggle('hidden', state.profile !== 'kids');
+      }
+
+      function toggleMultiView() {
+        state.multiView = !state.multiView;
+        const grid = document.getElementById('player-grid');
+        const pane1 = document.getElementById('pane-1');
+        const swapBtn = document.getElementById('btn-swap-audio');
+        if (state.multiView) {
+          grid.classList.add('sm:grid-cols-2');
+          pane1.classList.remove('hidden');
+          swapBtn.classList.remove('hidden');
+          showToast('Multi-tela ativada: clique em uma tela para focar o áudio.');
+        } else {
+          grid.classList.remove('sm:grid-cols-2');
+          pane1.classList.add('hidden');
+          swapBtn.classList.add('hidden');
+          setActivePane(0);
+        }
+      }
+
+      // Modals
+      function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+      function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+      document.querySelectorAll('[data-close-modal]').forEach(btn => {
+        btn.addEventListener('click', () => closeModal(btn.getAttribute('data-close-modal')));
+      });
+
+      // Event bindings
+      document.getElementById('btn-multiview').addEventListener('click', toggleMultiView);
+      document.getElementById('btn-swap-audio').addEventListener('click', () => setActivePane(state.activePane === 0 ? 1 : 0));
+      document.getElementById('pane-0').addEventListener('click', () => setActivePane(0));
+      document.getElementById('pane-1').addEventListener('click', () => setActivePane(1));
+      document.getElementById('btn-add-list').addEventListener('click', () => openModal('modal-add'));
+      document.getElementById('btn-open-add-from-empty').addEventListener('click', () => openModal('modal-add'));
+      document.getElementById('btn-profile').addEventListener('click', () => openModal('modal-profile'));
+      document.getElementById('btn-donate').addEventListener('click', () => openModal('modal-donate'));
+
+      document.getElementById('btn-load-demo').addEventListener('click', () => {
+        state.channels = parseM3U(DEMO_M3U);
+        saveStorage();
+        renderCategories();
+        renderChannels();
+        playChannel(state.channels[0], 0);
+        showToast('Lista de teste pública carregada!');
+      });
+
+      document.getElementById('btn-clear-data').addEventListener('click', () => {
+        state.channels = [];
+        state.favorites.clear();
+        saveStorage();
+        renderCategories();
+        renderChannels();
+        showToast('Listas locais removidas.');
+      });
+
+      document.getElementById('search-input').addEventListener('input', (e) => {
+        state.search = e.target.value;
+        renderChannels();
+      });
+
+      // Tabs in Add Modal
+      document.getElementById('tab-m3u').addEventListener('click', () => {
+        document.getElementById('form-m3u').classList.remove('hidden');
+        document.getElementById('form-xtream').classList.add('hidden');
+        document.getElementById('tab-m3u').className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-sky-600 text-white';
+        document.getElementById('tab-xtream').className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300';
+      });
+
+      document.getElementById('tab-xtream').addEventListener('click', () => {
+        document.getElementById('form-xtream').classList.remove('hidden');
+        document.getElementById('form-m3u').classList.add('hidden');
+        document.getElementById('tab-xtream').className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-sky-600 text-white';
+        document.getElementById('tab-m3u').className = 'px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 text-slate-300';
+      });
+
+      // File M3U upload
+      document.getElementById('input-m3u-file').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const parsed = parseM3U(reader.result);
+          if (!parsed.length) return showToast('Nenhum canal válido encontrado no arquivo.');
+          state.channels = parsed;
+          saveStorage();
+          renderCategories();
+          renderChannels();
+          closeModal('modal-add');
+          showToast(`${parsed.length} canais importados do arquivo.`);
+        };
+        reader.readAsText(file);
+      });
+
+      // M3U URL Submit
+      document.getElementById('form-m3u').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const url = document.getElementById('input-m3u-url').value.trim();
+        if (!url) return showToast('Informe uma URL M3U ou selecione um arquivo.');
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const text = await res.text();
+          const parsed = parseM3U(text);
+          if (!parsed.length) return showToast('Lista vazia ou formato inválido.');
+          state.channels = parsed;
+          saveStorage();
+          renderCategories();
+          renderChannels();
+          closeModal('modal-add');
+          showToast(`${parsed.length} canais carregados!`);
+        } catch (err) {
+          showToast('Não foi possível baixar a URL direto no navegador (use o proxy Docker ou importe o arquivo .m3u).');
+        }
+      });
+
+      // Xtream Submit
+      document.getElementById('form-xtream').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const host = document.getElementById('input-xtream-host').value.trim().replace(/\/+$/, '');
+        const user = encodeURIComponent(document.getElementById('input-xtream-user').value.trim());
+        const pass = encodeURIComponent(document.getElementById('input-xtream-pass').value.trim());
+        const m3uUrl = `${host}/get.php?username=${user}&password=${pass}&type=m3u_plus&output=m3u8`;
+        try {
+          const res = await fetch(m3uUrl);
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const text = await res.text();
+          const parsed = parseM3U(text);
+          state.channels = parsed;
+          saveStorage();
+          renderCategories();
+          renderChannels();
+          closeModal('modal-add');
+          showToast(`Xtream conectado: ${parsed.length} canais.`);
+        } catch (err) {
+          showToast('Falha ao conectar direto do navegador (use o proxy Docker para servidores sem CORS).');
+        }
+      });
+
+      // Profile switching
+      document.getElementById('select-profile-kids').addEventListener('click', () => {
+        state.profile = 'kids';
+        saveStorage();
+        updateProfileUI();
+        renderChannels();
+        closeModal('modal-profile');
+        showToast('Modo Kids ativado.');
+      });
+
+      document.getElementById('select-profile-main').addEventListener('click', () => {
+        if (state.profile === 'kids') {
+          document.getElementById('pin-box').classList.remove('hidden');
+          document.getElementById('input-pin').focus();
+          return;
+        }
+        closeModal('modal-profile');
+      });
+
+      document.getElementById('btn-verify-pin').addEventListener('click', () => {
+        const val = document.getElementById('input-pin').value.trim();
+        if (val === state.pin) {
+          state.profile = 'main';
+          document.getElementById('input-pin').value = '';
+          saveStorage();
+          updateProfileUI();
+          renderChannels();
+          closeModal('modal-profile');
+          showToast('Perfil Principal desbloqueado.');
+        } else {
+          showToast('PIN incorreto.');
+        }
+      });
+
+      // Copy Pix
+      document.getElementById('btn-copy-pix').addEventListener('click', () => {
+        const key = document.getElementById('pix-key-text').textContent;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(key).then(() => showToast('Chave Pix copiada!')).catch(() => {});
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = key;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          ta.remove();
+          showToast('Chave Pix copiada!');
+        }
+      });
+
+      // Init
+      loadStorage();
+      updateProfileUI();
+      renderCategories();
+      renderChannels();
+      lucide.createIcons();
+    })();
+  </script>
+</body>
+</html>
