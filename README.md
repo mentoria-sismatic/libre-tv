@@ -42,6 +42,7 @@ O proxy ficará disponível na porta `8787` (`http://localhost:8787/proxy?url=..
 Este software é mantido gratuitamente pela comunidade. Se o LibreTV é útil para você, considere apoiar:
 
 - **Pix:** `33196137000112` CNPJ
+- **Sponsors** https://github.com/sponsors/mentoria-sismatic
 ---
 
 ## Licença (AGPLv3 & Dual-License Comercial)
