@@ -1,6 +1,6 @@
 # Licença Comercial (Dual-License) — LibreTV
 
-Copyright (C) 2026 [Seu Nome ou Empresa]
+Copyright (C) 2026 Sismatic
 
 Este projeto é distribuído gratuitamente sob a licença **GNU Affero General Public License v3.0 (AGPLv3)** (veja `LICENSE`).
 
@@ -18,5 +18,5 @@ Você precisa adquirir uma **Licença Comercial** se desejar:
 
 ## Contato para Licenciamento Comercial
 
-- E-mail: `contato@seu-dominio.com.br`
-- Site / GitHub: `https://github.com/seu-usuario/libre-tv`
+- E-mail: `mentoriasismatic@gmail.com`
+- Site / GitHub: `https://github.com/mentoria-sismatic/libre-tv`
