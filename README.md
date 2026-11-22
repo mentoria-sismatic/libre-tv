@@ -21,7 +21,7 @@ Player web/PWA gratuito, sem anúncios e sem rastreamento para listas **M3U** e 
 
 1. Faça um fork ou suba este repositório para o seu GitHub.
 2. Ative o **GitHub Pages** em *Settings → Pages → Deploy from a branch (`main` / `/root`)*.
-3. Seu player ficará no ar gratuitamente em `https://seu-usuario.github.io/libre-tv/`.
+3. Seu player ficará no ar gratuitamente em `https://mentoria-sismatic.github.io/libre-tv/`.
 
 ---
 
@@ -41,8 +41,9 @@ O proxy ficará disponível na porta `8787` (`http://localhost:8787/proxy?url=..
 
 Este software é mantido gratuitamente pela comunidade. Se o LibreTV é útil para você, considere apoiar:
 
-- **Pix:** `33196137000112` CNPJ
-- **Sponsors** https://github.com/sponsors/mentoria-sismatic
+- **Pix:** `33196137000112` (CNPJ)
+- **GitHub Sponsors:** [github.com/sponsors/mentoria-sismatic](https://github.com/sponsors/mentoria-sismatic)
+
 ---
 
 ## Licença (AGPLv3 & Dual-License Comercial)
@@ -50,4 +51,4 @@ Este software é mantido gratuitamente pela comunidade. Se o LibreTV é útil pa
 Este projeto é distribuído sob a licença **GNU Affero General Public License v3.0 (AGPLv3)** — veja o arquivo [`LICENSE`](./LICENSE).
 
 - **Uso livre e aberto:** você pode usar, estudar, modificar e hospedar livremente, desde que mantenha o código-fonte aberto sob AGPLv3 (inclusive em modificações oferecidas via rede/SaaS).
-- **Uso Comercial / White-Label:** provedores de internet (ISPs), empresas de TV corporativa ou projetos que desejem distribuir versões proprietárias/fechadas com marca própria podem adquirir uma **licença comercial separada** entrando em contato com o mantenedor.
+- **Uso Comercial / White-Label:** provedores de internet (ISPs), empresas de TV corporativa ou projetos que desejem distribuir versões proprietárias/fechadas com marca própria podem adquirir uma **licença comercial separada** pelo e-mail `mentoriasismatic@gmail.com`.
